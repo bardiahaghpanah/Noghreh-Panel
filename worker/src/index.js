@@ -92,6 +92,55 @@ export default {
         const result = await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(match[1]).run();
         return result.meta.changes ? json({ ok: true }) : json({ error: "not_found" }, 404);
       }
+      if (url.pathname === "/api/subscriptions" && request.method === "GET") {
+        const userId = url.searchParams.get("user_id");
+        if (userId) {
+          const { results } = await env.DB.prepare(
+            "SELECT id,user_id,protocol,label,connection_uri,enabled,created_at FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC LIMIT 500"
+          ).bind(userId).all();
+          return json({ subscriptions: results });
+        }
+        const { results } = await env.DB.prepare(
+          "SELECT id,user_id,protocol,label,connection_uri,enabled,created_at FROM subscriptions ORDER BY created_at DESC LIMIT 500"
+        ).all();
+        return json({ subscriptions: results });
+      }
+      if (url.pathname === "/api/subscriptions" && request.method === "POST") {
+        const body = await request.json();
+        const userId = String(body.user_id || "");
+        const protocol = String(body.protocol || "").toLowerCase();
+        const label = String(body.label || "").trim().slice(0,100);
+        const connectionUri = body.connection_uri ? String(body.connection_uri).trim().slice(0,4000) : null;
+        if (!userId || !["vless","vmess","trojan","shadowsocks"].includes(protocol) || !label)
+          return json({ error: "invalid_subscription_fields" }, 400);
+        const user = await env.DB.prepare("SELECT id FROM users WHERE id=?").bind(userId).first();
+        if (!user) return json({ error: "user_not_found" }, 404);
+        if (connectionUri && !/^(vless|vmess|trojan|ss):\\/\\//i.test(connectionUri))
+          return json({ error: "invalid_connection_uri" }, 400);
+        const subId = id();
+        const now = new Date().toISOString();
+        await env.DB.prepare("INSERT INTO subscriptions (id,user_id,protocol,label,connection_uri,enabled,created_at) VALUES (?,?,?,?,?,1,?)")
+          .bind(subId,userId,protocol,label,connectionUri,now).run();
+        await env.DB.prepare("INSERT INTO audit_log (id, action, target_id, created_at) VALUES (?, 'subscription.create', ?, ?)")
+          .bind(id(),subId,now).run();
+        return json({ subscription: { id: subId,user_id:userId,protocol,label,connection_uri:connectionUri,enabled:1,created_at:now } }, 201);
+      }
+      const subMatch = url.pathname.match(/^\\/api\\/subscriptions\\/([0-9a-f-]+)$/i);
+      if (subMatch && request.method === "PATCH") {
+        const current = await env.DB.prepare("SELECT * FROM subscriptions WHERE id=?").bind(subMatch[1]).first();
+        if (!current) return json({ error: "not_found" }, 404);
+        const body = await request.json();
+        const enabled = body.enabled === undefined ? current.enabled : (body.enabled === true || body.enabled === 1 ? 1 : (body.enabled === false || body.enabled === 0 ? 0 : -1));
+        const label = body.label === undefined ? current.label : String(body.label).trim().slice(0,100);
+        if (![0,1].includes(enabled) || !label) return json({ error: "invalid_subscription_fields" }, 400);
+        await env.DB.prepare("UPDATE subscriptions SET enabled=?, label=? WHERE id=?").bind(enabled,label,subMatch[1]).run();
+        const row = await env.DB.prepare("SELECT id,user_id,protocol,label,connection_uri,enabled,created_at FROM subscriptions WHERE id=?").bind(subMatch[1]).first();
+        return json({ subscription: row });
+      }
+      if (subMatch && request.method === "DELETE") {
+        const result = await env.DB.prepare("DELETE FROM subscriptions WHERE id=?").bind(subMatch[1]).run();
+        return result.meta.changes ? json({ ok: true }) : json({ error: "not_found" }, 404);
+      }
       if (url.pathname === "/api/audit" && request.method === "GET") {
         const { results } = await env.DB.prepare("SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 100").all();
         return json({ events: results });
