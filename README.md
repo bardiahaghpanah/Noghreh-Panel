@@ -45,8 +45,10 @@ npx wrangler deploy
 
 فرمان ساخت D1 شناسه را برمی‌گرداند؛ مقدار `database_id` در فایل پیکربندی باید با آن جایگزین شود. برای توسعه محلی از `npx wrangler dev` استفاده کنید.
 
-## استقرار رابط کاربری
+## استقرار خودکار API و D1
 
-Workflow فعلی GitHub Actions فقط فایل‌های ایستای Cloudflare Pages را منتشر می‌کند و Worker/D1 را خودکار ایجاد نمی‌کند. API فعلاً جداگانه مستقر می‌شود. اسرار Cloudflare را فقط در بخش GitHub Actions Secrets یا Worker Secrets قرار دهید.
+Workflow جدید `.github/workflows/deploy-worker.yml` هنگام تغییر فایل‌های `worker/` یا اجرای دستی، تلاش می‌کند Worker را مستقر کند، منبع D1 را از روی binding پیکربندی فراهم کند، migrationها را اجرا کند و `ADMIN_TOKEN` را به‌صورت Worker Secret تنظیم کند. این فرایند فقط پس از تنظیم سه GitHub Actions Secret زیر قابل اجراست: `CLOUDFLARE_API_TOKEN`، `CLOUDFLARE_ACCOUNT_ID` و `NOGHREH_ADMIN_TOKEN`. توکن مدیر باید حداقل ۳۲ نویسه باشد. مجوزهای Cloudflare باید اجازه مدیریت Workers و D1 را بدهند.
+
+این workflow هنوز به‌صورت زنده در حساب Cloudflare اجرا و تأیید نشده است؛ ممکن است برای حساب یا مجوزهای مشخص نیاز به اصلاح داشته باشد. Workflow رابط Pages موجود و این workflow برای Worker دو استقرار جداگانه‌اند. اسرار Cloudflare را فقط در GitHub Actions Secrets یا Worker Secrets قرار دهید.
 
 این پروژه مستقل است و از کد یا دارایی‌های پروژه‌های دیگر کپی نمی‌کند. مجوز انتشار نهایی و اعلان وابستگی‌های ثالث باید پیش از انتشار عمومی مشخص شوند.
