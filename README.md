@@ -1,31 +1,52 @@
 # Noghreh Panel
 
-A clean, independent Persian RTL administration-panel starter with an AMOLED-inspired interface.
+پنل مستقل فارسی با رابط RTL و تم تیره. مخزن به‌صورت مرحله‌ای از نمونه رابط کاربری به پنل دارای API و پایگاه داده تبدیل می‌شود.
 
-## Current scope
+## وضعیت فعلی
 
-- Persian (RTL) responsive admin dashboard UI
-- User and subscription overview with sample data
-- Client-side QR-code/config preview scaffold
-- Clear separation between the admin UI and any real connection infrastructure
+- رابط وب فارسی و واکنش‌گرا در `index.html`
+- API مستقل Cloudflare Worker در `worker/src/index.js`
+- ساختار پایگاه داده D1 برای کاربران، اشتراک‌ها و گزارش رویدادها
+- API مدیریت کاربران با احراز هویت Bearer Token، اعتبارسنجی ورودی و ثبت رویدادهای مدیریتی
 
-## Important limitations
+## محدودیت مهم
 
-This repository is an independent implementation. It does not copy ZEUS Panel source code or assets.
+این commit زیرساخت اولیه API و ذخیره‌سازی را اضافه می‌کند؛ هنوز رابط فعلی به API متصل نشده و هنوز هسته اتصال واقعی VLESS، تولید subscription سازگار با کلاینت‌ها، اندازه‌گیری واقعی ترافیک، محدودسازی دستگاه و ورود تعاملی مدیر کامل نشده است. هیچ داده نمایشی را داده واقعی کاربران فرض نکنید. Worker به‌تنهایی بدون پیاده‌سازی و آزمون پروتکل، سرویس VPN آماده محسوب نمی‌شود.
 
-The current starter is a front-end prototype: it does **not** create real V2Ray/VLESS/Trojan connections, provision servers, meter traffic, or securely persist user accounts. Do not put secrets or production user data in the browser. Real connection services require a separately hosted, supported backend and infrastructure. Cloudflare Workers alone are not a V2Ray server, and deployments must comply with Cloudflare's current terms.
+## API
 
-## Run locally
+تمام مسیرهای زیر به‌جز health نیاز به هدر `Authorization: Bearer <ADMIN_TOKEN>` دارند:
 
-Open `index.html` in a modern browser. No build step is required for this UI prototype.
+- `GET /api/health` — بررسی اتصال D1
+- `GET /api/users` — فهرست کاربران (حداکثر ۵۰۰ مورد)
+- `POST /api/users` — ساخت کاربر؛ بدنه نمونه:
+  ```json
+  {"name":"کاربر آزمایشی","email":"user@example.com","traffic_limit_gb":100,"device_limit":2,"expires_at":"2027-01-01T00:00:00.000Z"}
+  ```
+- `GET /api/users/:id` — دریافت کاربر
+- `PATCH /api/users/:id` — ویرایش فیلدهای کاربر
+- `DELETE /api/users/:id` — حذف کاربر
+- `GET /api/audit` — صد رویداد مدیریتی اخیر
 
-## Next steps
+وضعیت‌های مجاز کاربر: `active`، `disabled`، `expired`. برای API توکن مدیر را فقط به‌صورت Worker Secret ذخیره کنید؛ هرگز در `index.html`، مخزن عمومی یا چت قرار ندهید. برای استفاده عمومی باید CORS به دامنه پنل محدود، احراز هویت قوی‌تر، محدودسازی درخواست و مدیریت امن نشست اضافه شود.
 
-1. Add authenticated backend endpoints and a persistent database.
-2. Add server-side authorization, audit logs, and input validation.
-3. Integrate a separately hosted connection-management service only after selecting compliant infrastructure.
-4. Replace all sample data and demo QR/config values before production.
+## راه‌اندازی توسعه
 
-## License
+نیازمند Node.js و Wrangler است. ابتدا یک پایگاه D1 بسازید، شناسه واقعی آن را در `worker/wrangler.toml` قرار دهید و migration را اجرا کنید:
 
-Project license and third-party dependency notices should be selected and reviewed before public redistribution.
+```bash
+cd worker
+npm install
+npx wrangler d1 create noghreh-panel-db
+npx wrangler d1 migrations apply noghreh-panel-db --remote
+npx wrangler secret put ADMIN_TOKEN
+npx wrangler deploy
+```
+
+فرمان ساخت D1 شناسه را برمی‌گرداند؛ مقدار `database_id` در فایل پیکربندی باید با آن جایگزین شود. برای توسعه محلی از `npx wrangler dev` استفاده کنید.
+
+## استقرار رابط کاربری
+
+Workflow فعلی GitHub Actions فقط فایل‌های ایستای Cloudflare Pages را منتشر می‌کند و Worker/D1 را خودکار ایجاد نمی‌کند. API فعلاً جداگانه مستقر می‌شود. اسرار Cloudflare را فقط در بخش GitHub Actions Secrets یا Worker Secrets قرار دهید.
+
+این پروژه مستقل است و از کد یا دارایی‌های پروژه‌های دیگر کپی نمی‌کند. مجوز انتشار نهایی و اعلان وابستگی‌های ثالث باید پیش از انتشار عمومی مشخص شوند.
