@@ -115,7 +115,7 @@ export default {
           return json({ error: "invalid_subscription_fields" }, 400);
         const user = await env.DB.prepare("SELECT id FROM users WHERE id=?").bind(userId).first();
         if (!user) return json({ error: "user_not_found" }, 404);
-        if (connectionUri && !/^(vless|vmess|trojan|ss):\\/\\//i.test(connectionUri))
+        if (connectionUri && !/^(vless|vmess|trojan|ss):\/\//i.test(connectionUri))
           return json({ error: "invalid_connection_uri" }, 400);
         const subId = id();
         const now = new Date().toISOString();
@@ -125,7 +125,7 @@ export default {
           .bind(id(),subId,now).run();
         return json({ subscription: { id: subId,user_id:userId,protocol,label,connection_uri:connectionUri,enabled:1,created_at:now } }, 201);
       }
-      const subMatch = url.pathname.match(/^\\/api\\/subscriptions\\/([0-9a-f-]+)$/i);
+      const subMatch = url.pathname.match(/^\/api\/subscriptions\/([0-9a-f-]+)$/i);
       if (subMatch && request.method === "PATCH") {
         const current = await env.DB.prepare("SELECT * FROM subscriptions WHERE id=?").bind(subMatch[1]).first();
         if (!current) return json({ error: "not_found" }, 404);
