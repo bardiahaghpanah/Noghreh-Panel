@@ -31,6 +31,20 @@ jobs:
         working-directory: worker
         run: npm install
 
+      - name: Validate JavaScript syntax
+        run: |
+          node --check worker/src/index.js
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path("manage.html").read_text()
+          scripts = re.findall(r"<script>(.*?)</script>", html, re.S)
+          if not scripts:
+              raise SystemExit("No inline management script found")
+          Path("/tmp/noghreh-manage-check.js").write_text(scripts[-1])
+          PY
+          node --check /tmp/noghreh-manage-check.js
+
       - name: Validate required secrets
         shell: bash
         env:
