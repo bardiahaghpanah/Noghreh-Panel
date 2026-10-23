@@ -1,26 +1,31 @@
 # راه‌اندازی Noghreh Panel
 
-این راهنما وضعیت فعلی پروژه را توضیح می‌دهد. انتشار Pages فقط رابط وب را منتشر می‌کند؛ API و D1 مراحل جداگانه دارند.
+پروژه دو بخش استقرار جداگانه دارد: رابط وب استاتیک و API سمت سرور.
 
-## رابط وب
+## ۱. رابط وب
 
-GitHub Actions workflow فعلی با Secretهای `CLOUDFLARE_API_TOKEN` و `CLOUDFLARE_ACCOUNT_ID` فایل‌های ایستای ریشه را روی Cloudflare Pages منتشر می‌کند. توکن را داخل کد، فایل HTML یا چت قرار ندهید.
+Workflow `Deploy Noghreh Panel to Cloudflare Pages` فایل‌های استاتیک را منتشر می‌کند. برای آن، این دو GitHub Actions Secret لازم‌اند:
 
-## API و پایگاه داده D1
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
 
-۱. در Cloudflare یک پایگاه D1 با نام `noghreh-panel-db` بسازید و شناسه آن را یادداشت کنید.
-۲. فایل `worker/wrangler.toml` را با شناسه واقعی D1 تنظیم کنید.
-۳. از پوشه `worker` اجرا کنید:
+## ۲. API و پایگاه داده D1
 
-```bash
-npm install
-npx wrangler d1 migrations apply noghreh-panel-db --remote
-npx wrangler secret put ADMIN_TOKEN
-npx wrangler deploy
-```
+Workflow جدید `Deploy Noghreh API and D1` در مسیر `.github/workflows/deploy-worker.yml` هنگام تغییر فایل‌های `worker/` یا با اجرای دستی اجرا می‌شود. این workflow به‌ترتیب تلاش می‌کند Worker را مستقر کند، D1 را از روی binding پیکربندی فراهم کند، migrationهای پایگاه داده را اجرا کند و توکن مدیر را به‌صورت Worker Secret تنظیم کند.
 
-برای `ADMIN_TOKEN` یک مقدار طولانی و تصادفی انتخاب کنید و آن را فقط در پاسخ امن Wrangler وارد کنید؛ هرگز آن را در چت یا فایل‌های پروژه ننویسید.
+این سه GitHub Actions Secret را از مسیر Settings → Secrets and variables → Actions در مخزن اضافه کنید:
 
-## وضعیت عملکرد
+- `CLOUDFLARE_API_TOKEN` — توکنی با مجوز لازم برای مدیریت Workers و D1 در حساب موردنظر
+- `CLOUDFLARE_ACCOUNT_ID` — شناسه حساب Cloudflare
+- `NOGHREH_ADMIN_TOKEN` — یک راز تصادفی و طولانی، حداقل ۳۲ نویسه؛ فقط برای احراز هویت API مدیر
 
-API شامل health check و عملیات CRUD کاربران است و اطلاعات را در D1 نگه می‌دارد. رابط فعلی هنوز به API وصل نیست. قابلیت‌های واقعی VLESS، subscription، سنجش مصرف ترافیک، محدودیت دستگاه و ورود مدیر تا تکمیل و آزمون‌های جداگانه آماده تولید نیستند. موفقیت workflow استاتیک به‌معنی آماده‌بودن این قابلیت‌ها نیست.
+مقدار واقعی هیچ‌کدام را در کد، Issues یا چت قرار ندهید. توکن Cloudflare که قبلاً در هر جای عمومی یا چت افشا شده باید لغو و با توکن تازه جایگزین شود.
+
+پس از افزودن Secretها، از GitHub → Actions، workflow با نام `Deploy Noghreh API and D1` را با گزینه Run workflow اجرا کنید. در صورت موفقیت، خروجی اجرا و داشبورد Cloudflare را بررسی کنید تا آدرس Worker و وجود D1 تأیید شود. آدرس health check برابر `https://<worker-host>/api/health` خواهد بود؛ نام میزبان را از خروجی یا داشبورد بردارید و حدس نزنید.
+
+## وضعیت و محدودیت‌ها
+
+- Workflow خودکار به مخزن اضافه شده، اما هنوز در حساب Cloudflare شما اجرا و تأیید نشده است.
+- رابط فعلی هنوز به API متصل نیست.
+- API اولیه کاربران و ساختار D1 اضافه شده‌اند؛ VLESS واقعی، subscription سازگار با کلاینت‌ها، اندازه‌گیری واقعی ترافیک، محدودسازی دستگاه و ورود تعاملی مدیر هنوز آماده تولید نیستند.
+- موفقیت استقرار Pages به معنی آماده بودن API یا قابلیت‌های VPN نیست.
